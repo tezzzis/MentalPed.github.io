@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Info del Usuario</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="logo">
+            <img src="LOGO_BLANCO.png" alt="Logo Mental ped">
+        </div>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="#">Informacion</a></li>
+            </ul>
+        </nav>
+        <a class="btn" href="mailto:email@email.de"><button>Contact</button></a>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" data-section="diario">Anotaciones del diario</button>
+        <button class="tab-btn" data-section="game">Respuestas del Test</button>
+        <button class="tab-btn" data-section="pe">Respuestas pregunta diaria</button>
+    </div>
+
+    <div id="diarioSection" class="two-column-container">
+        <div class="dates-column">
+            <h2>Anotaciones del diario</h2>
+            <div id="diarioDates"></div>
+        </div>
+        <div class="content-column">
+            <div id="diarioContent"></div>
+        </div>
+    </div>
+
+    <div id="gameSection" class="two-column-container">
+        <div class="dates-column">
+            <h2>Respuestas del test</h2>
+            <div id="gameDates"></div>
+        </div>
+        <div class="content-column">
+            <div id="gameContent"></div>
+        </div>
+    </div>
+
+    <div id="peSection" class="two-column-container">
+        <div class="dates-column">
+            <h2>Respuestas pregunta diaria</h2>
+            <div id="peDates"></div>
+        </div>
+        <div class="content-column">
+            <div id="peContent"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+        import { getFirestore, doc, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAwjJU19o3VmUNjr8ztNQax6Yl9nRPcdq4",
+            authDomain: "tesis-test-f038e.firebaseapp.com",
+            projectId: "tesis-test-f038e",
+            storageBucket: "tesis-test-f038e.appspot.com",
+            messagingSenderId: "474142825165",
+            appId: "1:474142825165:web:d1a4c36023e9286aa3a784",
+            measurementId: "G-82150V2QDK"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const email = localStorage.getItem("selectedEmail");
+        const diarioDates = document.getElementById("diarioDates");
+        const gameDates = document.getElementById("gameDates");
+        const peDates = document.getElementById("peDates");
+        const diarioContent = document.getElementById("diarioContent");
+        const gameContent = document.getElementById("gameContent");
+        const peContent = document.getElementById("peContent");
+
+        if (!email) {
+            diarioContent.innerHTML = "<p>No se proporcionó ningún correo.</p>";
+            gameContent.innerHTML = "<p>No se proporcionó ningún correo.</p>";
+            peContent.innerHTML = "<p>No se proporcionó ningún correo.</p>";
+        } else {
+            const userDocRef = doc(db, "users", email);
+
+            // Función para manejar botones activos
+            function setActiveButton(activeBtn) {
+                document.querySelectorAll('.date-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                activeBtn.classList.add('active');
+
+                // Ocultar todos los contenidos
+                diarioContent.innerHTML = '';
+                gameContent.innerHTML = '';
+                peContent.innerHTML = '';
+            }
+
+            // Mostrar contenido del diario
+            const showDiarioContent = (data, btnElement) => {
+                setActiveButton(btnElement);
+                diarioContent.innerHTML = `
+                    <div class="content-card">
+                        <h3>${data.fecha}</h3>
+                        <p><strong>Emoción:</strong> ${data.emocion}</p>
+                        <p>${data.texto}</p>
+                    </div>
+                `;
+            };
+
+            // Mostrar contenido del juego (TB con opciones)
+            const showGameContent = (date, responses, btnElement) => {
+                setActiveButton(btnElement);
+
+                const tbGroup = responses
+                    .filter(resp => resp.questionId.startsWith("TB_"))
+                    .sort((a, b) => {
+                        const numA = parseInt(a.questionId.split("_")[1], 10);
+                        const numB = parseInt(b.questionId.split("_")[1], 10);
+                        return numA - numB;
+                    });
+                const formatTBQuestion = (resp) => {
+                    const pregunta = preguntasTB[resp.questionId] || resp.questionId;
+                    const opciones = opcionesTB[resp.questionId];
+
+                    let html = `<div class="pregunta">
+                        <p><strong>${pregunta}</strong></p>`;
+
+                    if (opciones) {
+                        html += `<ul>`;
+                        opciones.forEach(op => {
+                            const isSelected = op === resp.answer;
+                            html += `
+                            <li style="color:${isSelected ? 'green' : 'black'}; font-weight:${isSelected ? 'bold' : 'normal'}">
+                                ${isSelected ? '✅ ' : ''}${op}
+                            </li>`;
+                        });
+                        html += `</ul>`;
+                    } else {
+                        html += `<p>${resp.answer}</p>`;
+                    }
+
+                    html += `</div>`;
+                    return html;
+                };
+
+                let contentHTML = ``;
+
+                tbGroup.forEach(resp => {
+                    contentHTML += formatTBQuestion(resp);
+                });
+
+                contentHTML += `</div>`;
+                gameContent.innerHTML = contentHTML;
+            };
+
+            // Mostrar contenido PE (directamente de Firebase)
+            const showPeContent = (date, responses, btnElement) => {
+                setActiveButton(btnElement);
+
+                // Filtra solo los PE_ y arma el HTML
+                let contentHTML = `<div class="content-card"><h3>${date}</h3>`;
+
+                responses
+                    .filter(resp => resp.questionId.startsWith("PE_"))
+                    .forEach(resp => {
+                        const pregunta = preguntasPE[resp.questionId] || resp.questionId;
+                        const opciones = opcionesPE[resp.questionId];
+
+                        contentHTML += `<div class="pregunta">
+        <p><strong>${pregunta}</strong></p>`;
+
+                        if (opciones) {
+                            contentHTML += `<ul>`;
+                            opciones.forEach(op => {
+                                const isSelected = op === resp.answer;
+                                contentHTML += `
+            <li style="
+              color: ${isSelected ? 'green' : 'black'};
+              font-weight: ${isSelected ? 'bold' : 'normal'}">
+              ${isSelected ? '✅ ' : ''}${op}
+            </li>`;
+                            });
+                            contentHTML += `</ul>`;
+                        } else {
+                            // Si no definiste opciones en el mapa, solo muestro el texto
+                            contentHTML += `<p>${resp.answer}</p>`;
+                        }
+
+                        contentHTML += `</div>`;  // cierre .pregunta
+                    });
+
+                contentHTML += `</div>`;  // cierre .content-card
+                peContent.innerHTML = contentHTML;
+            };
+
+            // Cargar entradas del diario
+            const loadDiario = async () => {
+                const diarioSnapshot = await getDocs(collection(userDocRef, "diario"));
+                diarioSnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const dateBtn = document.createElement("button");
+                    dateBtn.className = "date-btn";
+                    dateBtn.textContent = `📓 ${data.fecha}`;
+                    dateBtn.onclick = () => showDiarioContent(data, dateBtn);
+                    diarioDates.appendChild(dateBtn);
+                });
+            };
+
+            // Cargar respuestas del juego
+            const loadGameResponses = async () => {
+                const gameSnapshot = await getDocs(collection(userDocRef, "gameResponses"));
+                const grouped = {};
+
+                gameSnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const date = data.timestamp || "Sin fecha";
+                    if (!grouped[date]) grouped[date] = [];
+                    grouped[date].push(data);
+                });
+
+                for (const date in grouped) {
+                    const dateBtn = document.createElement("button");
+                    dateBtn.className = "date-btn";
+                    dateBtn.textContent = `📝 ${date}`;
+                    dateBtn.onclick = () => showGameContent(date, grouped[date], dateBtn);
+                    gameDates.appendChild(dateBtn);
+                }
+            };
+
+            // Cargar respuestas PE
+            const loadPeResponses = async () => {
+                // 1) Trae TODO de gameResponses
+                const snapshot = await getDocs(collection(userDocRef, "gameResponses"));
+                const grouped = {};
+
+                // 2) Filtra solo los PE_ y agrúpalos por fecha
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (!data.questionId?.startsWith("PE_")) return;      // <-- filtro PE_
+                    const date = data.timestamp || "Sin fecha";
+                    if (!grouped[date]) grouped[date] = [];
+                    grouped[date].push(data);
+                });
+
+                // 3) Por cada fecha crea un botón en peDates
+                for (const date in grouped) {
+                    const btn = document.createElement("button");
+                    btn.className = "date-btn";
+                    btn.textContent = `📅 ${date}`;
+                    btn.onclick = () => showPeContent(date, grouped[date], btn);
+                    peDates.appendChild(btn);
+                }
+
+                // 4) Mensaje por defecto si no hay ningún PE_
+                if (peDates.children.length === 0) {
+                    peDates.innerHTML = "<p>No hay respuestas PE para este usuario.</p>";
+                }
+            };
+
+            // Definición de preguntas y opciones TB (se mantienen)
+            const preguntasTB = {
+                "TB_1": "1. ¿Cómo ha sido el clima en tu corazón estos días?",
+                "TB_2": "2. ¿Cómo imaginas el camino hacia adelante?",
+                "TB_3": "3. ¿Cómo te hablas cuando las cosas no salen?",
+                "TB_4": "4. ¿Qué tan cerca sientes las cosas que antes te alegraban?",
+                "TB_5": "5. ¿Qué peso llevas en tu espalda hoy?",
+                "TB_6": "6. ¿Sientes que mereces descansar de las batallas?",
+                "TB_7": "7. ¿Qué ves cuando te miras?",
+                "TB_8": "8. ¿Cómo es la voz dentro de tu cabeza?",
+                "TB_9": "9. ¿Cómo está tu faro interno hoy?",
+                "TB_10": "10. ¿Han salido lágrimas de tu nube interna?",
+                "TB_11": "11. ¿Cómo se siente tu cuerpo hoy?",
+                "TB_12": "12. ¿Qué tan fuerte es tu imán para las cosas que te gustaban?",
+                "TB_13": "13. ¿Cómo te sientes al elegir un camino?",
+                "TB_14": "14. ¿Qué lugar ocupas en tu propio universo?",
+                "TB_15": "15. ¿Cómo está tu batería interna hoy?",
+                "TB_16": "16. ¿Cómo va el ritmo de sueño en estos días?",
+                "TB_17": "17. ¿Cómo está tu termómetro de paciencia hoy?",
+                "TB_18": "18. ¿Cómo va tu hambre en esta travesía?",
+                "TB_19": "19. ¿Cómo se siente tu foco hoy?",
+                "TB_20": "20. ¿Qué tan pesado se siente tu cuerpo?",
+                "TB_21": "21. Últimamente, ¿cómo sientes tu interés en la intimidad y el romance?",
+            };
+
+            const opcionesTB = {
+                "TB_1": [
+                    "Hay días soleados que me llenan de calma",
+                    "A veces llueve, pero sé que pasará",
+                    "Las nubes grises no se van…",
+                    "Siento una tormenta constante dentro de mí"
+                ],
+                "TB_2": [
+                    "Veo senderos libres",
+                    "Hay niebla, pero sigo caminando",
+                    "Me cuesta ver algo más allá de hoy",
+                    "Siento que el camino está bloqueado"
+                ],
+                "TB_3": [
+                    "Me recuerdo que puedo intentarlo de nuevo",
+                    "A veces me critico, pero trato de ser amable",
+                    "Siento que todo lo que hago está mal",
+                    "Creo que no sirvo para nada"
+                ],
+                "TB_4": [
+                    "Aún las siento cerca, como un abrazo",
+                    "Las veo, pero no las alcanzo del todo",
+                    "Parecen estar detrás de un cristal",
+                    "Es como si nunca hubieran existido"
+                ],
+                "TB_5": [
+                    "Siento ligereza, como una pluma",
+                    "Algunas piedras, pero puedo soltarlas",
+                    "La mochila está llena… me cuesta caminar",
+                    "Es tan pesada que no me deja respirar"
+                ],
+                "TB_6": [
+                    "Sí, todos necesitamos paz",
+                    "A veces, pero me cuesta creerlo ",
+                    "No… siento que debo seguir luchando",
+                    "Creo que merezco sufrir"
+                ],
+                "TB_7": [
+                    "A alguien que está aprendiendo",
+                    "A veces me gusta, a veces no",
+                    "A un extraño que no entiendo",
+                    "A alguien que no quiero ser "
+                ],
+                "TB_8": [
+                    "Es amiga, me anima a seguir",
+                    "A veces es dura, pero trato de calmarla",
+                    "Grita cosas que me duelen",
+                    "Es un enemigo constante"
+                ],
+                "TB_9": [
+                    "Brilla",
+                    "Parpadea… necesita cuidado ",
+                    "Casi no tiene luz",
+                    "Siento que se apagó"
+                ],
+                "TB_10": [
+                    "Sí, y me aliviaron",
+                    "Algunas, pero las tragué",
+                    "Lloré hasta quedarme vacío",
+                    "Las lágrimas no salen… y duele"
+                ],
+                "TB_11": [
+                    "Tranquilo, como un lago en calma",
+                    "Algo inquieto, pero puedo manejarlo",
+                    "Como un motor que no puede parar",
+                    "Estoy colapsando por dentro"
+                ],
+                "TB_12": [
+                    " Aún atrae, como antes ",
+                    "Se debilitó, pero sigue ahí",
+                    "Casi no siento su fuerza",
+                    "Es como si nunca hubiera existido"
+                ],
+                "TB_13": [
+                    "Seguro/a, confío en mis pasos",
+                    "Dudo, pero sigo adelante",
+                    "Me paralizo… no sé qué hacer",
+                    "Siento que todas las opciones están mal"
+                ],
+                "TB_14": [
+                    "Soy una estrella única ",
+                    "A veces brillo, a veces me escondo",
+                    "Me siento como polvo olvidado en el espacio",
+                    "Creo que ni siquiera existo en este mapa"
+                ],
+                "TB_15": [
+                    "Cargada, lista para el día",
+                    "Medio llena… necesito recargar",
+                    "En rojo… apenas funciono",
+                    "Apagada… no puedo moverme"
+                ],
+                "TB_16": [
+                    "Duermo igual que siempre, sin cambios",
+                    "Estoy durmiendo un poco menos de lo normal.",
+                    "Duermo muchísimo menos, apenas logro descansar",
+                    "Me despierto horas antes de lo habitual y ya no puedo volver a dormir."
+                ],
+                "TB_17": [
+                    "En calma, como un jardín zen",
+                    "Algo caliente, pero lo manejo",
+                    "caliente, un poco mas de lo habitual",
+                    "Hirviendo… exploto fácilmente"
+                ],
+                "TB_18": [
+                    "Todo normal. Como igual que siempre",
+                    "Tengo un poco menos de apetito de lo habitual.",
+                    "Mi apetito ha bajado mucho, casi no tengo ganas de comer.",
+                    "No tengo nada de apetito, podría pasar el día sin comer."
+                ],
+                "TB_19": [
+                    "Nítido, como una lupa",
+                    "Borroneado, pero sigo intentando",
+                    "Roto en mil pedazos",
+                    "Perdido en la niebla"
+                ],
+                "TB_20": [
+                    "Ligero, como una pluma",
+                    "Algo cargado, pero puedo moverme",
+                    "Como si llevara piedras en los bolsillos",
+                    "Siento que me hundo en el suelo"
+                ],
+                "TB_21": [
+                    "Late con fuerza",
+                    "Pulso irregular",
+                    "Latido débil",
+                    "Completamente apagada"
+                ]
+            };
+
+            const preguntasPE = {
+                "PE_1": "1. ¿Lograste descansar un poco o la mente no te dejó?  ",
+                "PE_2": "2. ¿Pudiste darle algo a tu cuerpo hoy?  ",
+                "PE_3": "3. ¿Hubo algo que hicieras por ti, por pequeño que fuera?  ",
+                "PE_4": "4. ¿Hubo un momento en que sentiste un respiro?  ",
+                "PE_5": "5. ¿Tuviste un momento donde  no te sentiste solo?  ",
+                "PE_6": "6. ¿Lograste soltar una cosa que te abrumaba hoy?  ",
+                "PE_7": "7. ¿Hubo algo, por minimo, que sintieras que hiciste?  ",
+                "PE_8": "8. ¿Hubo un momento donde te sentiste mas seguro?  ",
+            };
+
+            const opcionesPE = {
+                "PE_1": [
+                    "Dormi lo necesario",
+                    "Me costó, pero cerré los ojos un rato… ",
+                    "Pasé más tiempo viendo el techo que durmiendo",
+                    "La noche fue larga y fría…"
+                ],
+                "PE_2": [
+                    "Comí algo, aunque fuera pequeño ",
+                    "Un sorbo de agua… y un pedacito de pan ",
+                    " No pude… pero lo intentaré más tarde",
+                    "Hoy no pude…"
+                ],
+                "PE_3": [
+                    "Me lavé la cara… o me cambié de ropa",
+                    "Respiré hondo una vez… ",
+                    "Solo sobreviví… ",
+                    " No pude…"
+                ],
+                "PE_4": [
+                    "Un segundo donde respire mas profundo",
+                    "tal vez cuando me acoste en el piso",
+                    "Solo aguante ...",
+                    "Fue un dia pesado"
+                ],
+                "PE_5": [
+                    "Alguien me mando un mensaje ... o tu estuviste aqui",
+                    "Vi una serie y me senti acompañado",
+                    "Me senti solo ...",
+                    "Me senti desconectado"
+                ],
+                "PE_6": [
+                    "Deje una tarea para mañana ... Y esta bien",
+                    "Respire cuando senti  que colapsaba",
+                    "Me culpe por no poder ...",
+                    "La presion me gano ..."
+                ],
+                "PE_7": [
+                    "Me levante ... o conteste un mensaje",
+                    "Recogi un calcetin del suelo",
+                    "Solo existi ...",
+                    "No hoy ..."
+                ],
+                "PE_8": [
+                    "Me escondi bajo las cobijas",
+                    "Puse una cancion que me calma",
+                    "Me senti fragil ...",
+                    "El miedo me gano ..."
+                ]
+                // … y así sucesivamente
+            };
+
+            // Cargar todos los datos
+            loadDiario();
+            loadGameResponses();
+            loadPeResponses();
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // 1) Cambia el botón activo
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // 2) Oculta todas las secciones y muestra la que toca
+                const section = btn.dataset.section;
+                ['diario', 'game', 'pe'].forEach(sec => {
+                    document.getElementById(sec + 'Section').style.display = (sec === section ? 'flex' : 'none');
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,235 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;800&display=swap");
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Nunito", sans-serif;
+  font-size: 20px;
+}
+
+body {
+  background-color: #FFF;
+  line-height: 1.6;
+}
+
+/* NAVBAR */
+.header {
+  background-color: #9878AB;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 90px;
+  padding: 5px 10%;
+}
+
+.header .logo {
+  cursor: pointer;
+}
+
+.header .logo img {
+  height: 70px;
+  width: auto;
+  transition: all 0.3s;
+}
+
+.header .logo img:hover {
+  transform: scale(1.1);
+}
+
+.header .nav-links {
+  list-style: none;
+}
+
+.header .nav-links li {
+  display: inline-block;
+  padding: 0 20px;
+}
+
+.header .nav-links li:hover {
+  transform: scale(1.1);
+}
+
+.header .nav-links a {
+  font-size: 700;
+  color: #eceff1;
+  text-decoration: none;
+}
+
+.header .nav-links li a:hover {
+  color: #BED6D3;
+}
+
+.header .btn button {
+  font-weight: 700;
+  color: #1b3039;
+  padding: 9px 25px;
+  background: #eceff1;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease 0s;
+}
+
+.header .btn button:hover {
+  background-color: #e2f1f8;
+  color: #50938f;
+  transform: scale(1.1);
+}
+
+/* DISEÑO DE DOS COLUMNAS */
+.two-column-container {
+  display: flex;
+  margin: 20px 40px;
+  gap: 20px;
+  min-height: calc(100vh - 150px);
+}
+
+.dates-column {
+  width: 30%;
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: 10px;
+  overflow-y: auto;
+}
+
+.content-column {
+  width: 70%;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  overflow-y: auto;
+}
+
+/* BOTONES DE FECHAS */
+.date-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  background-color: #BED6D3;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.3s;
+  font-weight: 600;
+}
+
+.date-btn:hover {
+  background-color: #c0bed6;
+  transform: translateX(5px);
+}
+
+.date-btn.active {
+  background-color: #9878AB;
+  color: #1b3039;
+  font-weight: 800;
+  border-left: 4px solid #9878AB;
+}
+
+/* Estilos específicos para cada tipo de botón */
+
+
+/* TARJETAS DE CONTENIDO */
+.content-card {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.section-title {
+  color: #9878AB;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.2em;
+  font-weight: 800;
+}
+
+.pregunta {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+  border-left: 3px solid #BED6D3;
+}
+
+.pregunta ul {
+  margin-top: 10px;
+  padding-left: 20px;
+  list-style-type: none;
+}
+
+.pregunta li {
+  margin-bottom: 8px;
+  padding: 5px;
+  border-radius: 3px;
+}
+
+/* TÍTULOS */
+h2 {
+  color: #9878AB;
+  margin-bottom: 15px;
+  font-weight: 800;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #BED6D3;
+}
+
+.input-container {
+  padding: 20px;
+  text-align: center;
+}
+
+.input-container input {
+  padding: 10px;
+  margin-right: 10px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+}
+
+.input-container button {
+  padding: 10px 20px;
+  background-color: #9878AB;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.input-container button:hover {
+  background-color: #BED6D3;
+}
+
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin: 20px;
+}
+.tab-btn {
+  background: #eceff1;
+  border: none;
+  padding: 10px 20px;
+  margin: 0 5px;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.tab-btn.active {
+  background: white;
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+}
+.tab-btn:not(.active):hover {
+  background: #f0f0f0;
+}
+
+/* Ocultar columnas por defecto: solo diario visible */
+#gameSection, #peSection {
+  display: none;
+}
+
